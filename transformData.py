@@ -12,7 +12,7 @@ test = 'data/test.csv'
 #train = train[train['LONGF'] != -999]
 
 #"TRIP_ID","CALL_TYPE","ORIGIN_CALL","ORIGIN_STAND","TAXI_ID","TIMESTAMP","DAY_TYPE","MISSING_DATA","POLYLINE"
-header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,DAY_TYPE,MISSING_DATA,LAT1,LONG2,LAT2,LONG1"
+header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,DAY_TYPE,MISSING_DATA,LAT1,LONG1,LAT2,LONG2"
 yHead = ",LATF,LONGF"
 
 def data(path, traindata=False):
@@ -21,7 +21,7 @@ def data(path, traindata=False):
             continue
         # parse x
         line2 = ""
-        for m, feat in enumerate(line.rstrip().replace('","',';').replace('"','').split(';')):
+        for m, feat in enumerate(line.rstrip().replace('NA', '""').replace('","',';').replace('"','').split(';')):
             if m == 8: # POLYLINE
                 polyline = json.loads(feat)
                 try:
@@ -62,6 +62,7 @@ def data(path, traindata=False):
 
 print 'starting ...'
 tt = 1
+
 print 'transforming train data'
 with open("data/train2.csv", 'w') as outfile:
     outfile.write(header+yHead+'\n')
@@ -76,8 +77,8 @@ tt = 1
 print 'transforming test data'
 with open("data/test2.csv", 'w') as outfile:
     outfile.write(header+'\n')
-    for line in data(test):
-        outfile.write('%s\n' % line)
+    for lineTest in data(test):
+        outfile.write('%s\n' % lineTest)
         if tt % 100000 == 0:
                 print('%s\tencountered: %d' % (datetime.now(), tt))
         tt += 1
