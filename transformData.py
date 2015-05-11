@@ -3,7 +3,7 @@ import json
 
 from datetime import datetime
 
-train = 'data/train.csv.processing.imported'
+train = 'data/train.csv'
 
 test = 'data/test.csv'
 
