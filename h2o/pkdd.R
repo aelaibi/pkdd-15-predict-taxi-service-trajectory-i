@@ -64,6 +64,29 @@ h2o.logLoss <- function(preds, resp) {
   LL
 }
 
+h2o.HaversineDistance=function(lat1,lon1,lat2,lon2)
+{
+  #returns the distance in km
+  REarth<-6371
+  lat<-abs(lat1-lat2)*pi/180
+  lon<-abs(lon1-lon2)*pi/180
+  lat1<-lat1*pi/180
+  lat2<-lat2*pi/180
+  a<-sin(lat/2)*sin(lat/2)+cos(lat1)*cos(lat2)*sin(lon/2)*sin(lon/2)
+  d<-2*atan2(sqrt(a),sqrt(1-a))
+  d<-REarth*d
+  return(d)
+}
+
+h2o.meanHaversineDistance<-function(lat1,lon1,lat2,lon2)
+{
+  return(mean(HaversineDistance(lat1,lon1,lat2,lon2)))
+}
+
+h2o.RMSE<-function(pre,real)
+{
+  return(sqrt(mean((pre-real)*(pre-real))))
+}
 
 
 ### START
@@ -105,24 +128,50 @@ h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value 
 
 cat("\nTraining H2O model on training/validation ")
 ## Note: This could be grid search models, after which you would obtain the best model with model <- cvmodel@model[[1]]
-#cvmodel <- h2o.randomForest(data=train, validation=valid, x=c(3:ncol(train)), y=2,
-#                           type="BigData", ntree=50, depth=20, seed=myseed)
-cvmodel <- h2o.gbm(data=train, validation=valid, x=c(1:ncol(train)), y=14,distribution="gaussian"
-                   , n.tree=100, interaction.depth=10)
+cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:12), y=13,classification=F,
+                           type="BigData", ntree=100, depth=20, seed=myseed)
+cvmodelLangitude <- h2o.randomForest(data=train, validation=valid, x=c(2:12), y=14,classification=F,
+                                    type="BigData", ntree=100, depth=20, seed=myseed)
+#cvmodelLatitude <- h2o.gbm(data=train, validation=valid, x=c(2:12), y=13,distribution="gaussian"
+#                   , n.tree=50, interaction.depth=10)
+
+#cvmodelLangitude <- h2o.gbm(data=train, validation=valid, x=c(2:12), y=14,distribution="gaussian"
+#                   , n.tree=50, interaction.depth=10)
+
+
 #cvmodel <- h2o.deeplearning(data=train, validation=valid, x=c(3:ncol(train)), y=2,
 #                            hidden=c(50,50), max_categorical_features=100000, train_samples_per_iteration=10000, score_validation_samples=10000)
 
-train_resp <- train[,14] #actual label
-train_preds <- h2o.predict(cvmodel, train)[,1] #[,3] is probability for class 1
-cat("\nLogLoss on training data:", h2o.logLoss(train_preds, train_resp))
+# Latitude Part
+train_resp_lat <- train[,13] #actual label
+train_preds_lat <- h2o.predict(cvmodelLatitude, train)[,1] #[,3] is probability for class 1
+valid_resp_lat <- valid[,13]
+valid_preds_lat <- h2o.predict(cvmodelLatitude, valid)[,1]
 
-valid_resp <- valid[,14]
-valid_preds <- h2o.predict(cvmodel, valid)[,1]
-cat("\nLogLoss on validation data:", h2o.logLoss(valid_preds, valid_resp))
+# Longitude Part
+train_resp_long <- train[,14] #actual label
+train_preds_long <- h2o.predict(cvmodelLangitude, train)[,1] #[,3] is probability for class 1
+valid_resp_long <- valid[,14]
+valid_preds_long <- h2o.predict(cvmodelLangitude, valid)[,1]
 
-#submission <- read.csv(path_submission, colClasses = c("character"))
-#submission[,2] <- as.data.frame(pred)
-#colnames(submission) <- c("id", "click")
-#cat("\nWriting predictions on test data.")
-#write.csv(as.data.frame(submission), file = paste(path,"./submission.csv", sep = ''), quote = F, row.names = F)
-#sink()
+
+cat("\nHaversineDistance on Training data:",  h2o.meanHaversineDistance(data.matrix(as.data.frame(train_preds_lat)),
+                                                                          data.matrix(as.data.frame(train_preds_long)),
+                                                                          data.matrix(as.data.frame(train_resp_lat)),
+                                                                          data.matrix(as.data.frame(train_resp_long))))
+
+cat("\nHaversineDistance on validation data:",  h2o.meanHaversineDistance(data.matrix(as.data.frame(valid_preds_lat)),
+                          data.matrix(as.data.frame(valid_preds_long)),
+                          data.matrix(as.data.frame(valid_resp_lat)),
+                          data.matrix(as.data.frame(valid_resp_long))))
+
+pred_lat <- h2o.predict(cvmodelLatitude, test_hex)[,1]
+pred_long <- h2o.predict(cvmodelLangitude, test_hex)[,1]
+
+submission <- read.csv(path_submission, colClasses = c("character"))
+submission[2] <- as.data.frame(pred_lat)
+submission[3] <- as.data.frame(pred_long)
+colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
+cat("\nWriting predictions on test data.")
+write.csv(as.data.frame(submission), file = paste(path,"./submission1.csv", sep = ''), quote = F, row.names = F)
+sink()
