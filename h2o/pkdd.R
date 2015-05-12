@@ -129,9 +129,9 @@ h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value 
 cat("\nTraining H2O model on training/validation ")
 ## Note: This could be grid search models, after which you would obtain the best model with model <- cvmodel@model[[1]]
 cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:12), y=13,classification=F,
-                           type="BigData", ntree=100, depth=20, seed=myseed)
+                           type="BigData", ntree=200, depth=20, seed=myseed)
 cvmodelLangitude <- h2o.randomForest(data=train, validation=valid, x=c(2:12), y=14,classification=F,
-                                    type="BigData", ntree=100, depth=20, seed=myseed)
+                                    type="BigData", ntree=200, depth=20, seed=myseed)
 #cvmodelLatitude <- h2o.gbm(data=train, validation=valid, x=c(2:12), y=13,distribution="gaussian"
 #                   , n.tree=50, interaction.depth=10)
 
@@ -165,13 +165,26 @@ cat("\nHaversineDistance on validation data:",  h2o.meanHaversineDistance(data.m
                           data.matrix(as.data.frame(valid_resp_lat)),
                           data.matrix(as.data.frame(valid_resp_long))))
 
-pred_lat <- h2o.predict(cvmodelLatitude, test_hex)[,1]
-pred_long <- h2o.predict(cvmodelLangitude, test_hex)[,1]
+# Submit File and Building From Full Model 
 
-submission <- read.csv(path_submission, colClasses = c("character"))
-submission[2] <- as.data.frame(pred_lat)
-submission[3] <- as.data.frame(pred_long)
-colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
-cat("\nWriting predictions on test data.")
-write.csv(as.data.frame(submission), file = paste(path,"./submission1.csv", sep = ''), quote = F, row.names = F)
-sink()
+fullModel = T
+
+if(fullModel){
+  cvmodelLatitudeFull <- h2o.randomForest(data=train_hex, x=c(2:12), y=13,classification=F,
+                                      type="BigData", ntree=200, depth=20, seed=myseed)
+  cvmodelLangitudeFull <- h2o.randomForest(data=train_hex, x=c(2:12), y=14,classification=F,
+                                       type="BigData", ntree=200, depth=20, seed=myseed)
+  
+  pred_lat <- h2o.predict(cvmodelLatitudeFull, test_hex)[,1]
+  pred_long <- h2o.predict(cvmodelLangitudeFull, test_hex)[,1]
+  submission <- read.csv(path_submission, colClasses = c("character"))
+  submission[3] <- as.data.frame(pred_lat)
+  submission[2] <- as.data.frame(pred_long)
+  colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
+  cat("\nWriting predictions on test data.")
+  write.csv(as.data.frame(submission), file = paste(path,"./submission1.csv", sep = ''), quote = F, row.names = F)
+  sink()
+  
+}
+  
+
