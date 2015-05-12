@@ -24,3 +24,8 @@ DAYTYPE: (char) It identifies the daytype of the trip’s start. It assumes one 
 MISSING_DATA: (Boolean) It is FALSE when the GPS data stream is complete and TRUE whenever one (or more) locations are missing
 
 POLYLINE: (String): It contains a list of GPS coordinates (i.e. WGS84 format) mapped as a string. The beginning and the end of the string are identified with brackets (i.e. [ and ], respectively). Each pair of coordinates is also identified by the same brackets as [LONGITUDE, LATITUDE]. This list contains one pair of coordinates for each 15 seconds of trip. The last list item corresponds to the trip’s destination while the first one represents its start;
+
+
+
+
+Answering your specific question "For trainset in case of missing gps data should we assume that last lat-lon pair is destination? The missing_data field is on for a very small subset of trips in the training dataset. The field was calculated using the information on that some communication errors occurred between that vehicle and the server during that specific trip. The trajectory may be 100% complete, 90% or 10%. So, the answer is no. You may use those specific set of trips as you prefer...but keep this in mind.
