@@ -3,7 +3,7 @@ import json
 
 from datetime import datetime
 
-train = 'data/train.csv'
+train = 'data/train.csv.processing.imported'
 
 test = 'data/test.csv'
 
@@ -12,8 +12,8 @@ test = 'data/test.csv'
 #train = train[train['LONGF'] != -999]
 
 #"TRIP_ID","CALL_TYPE","ORIGIN_CALL","ORIGIN_STAND","TAXI_ID","TIMESTAMP","DAY_TYPE","MISSING_DATA","POLYLINE"
-header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,DAY_TYPE,MISSING_DATA,LAT1,LONG1,LAT2,LONG2"
-yHead = ",LATF,LONGF"
+header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,DAY_TYPE,MISSING_DATA,LONG1,LAT1,LONG2,LAT2"
+yHead = ",LONGF,LATF"
 extraCols =",MONTH,WEEK,DAY,HOUR"
 
 def data(path, traindata=False):
@@ -27,35 +27,35 @@ def data(path, traindata=False):
             if m == 8: # POLYLINE
                 polyline = json.loads(feat)
                 try:
-                    lat1 = polyline[0][0]
+                    lat1 = polyline[0][1]
                 except:
                     lat1 = -999
                 try:
-                    lat2 = polyline[-2][0]
+                    lat2 = polyline[-2][1]
                 except:
                     lat2 = -999
 
                 try:
-                    long1 = polyline[0][1]
+                    long1 = polyline[0][0]
                 except:
                     long1 = -999
                 try:
-                    long2 = polyline[-2][1]
+                    long2 = polyline[-2][0]
                 except:
                     long2 = -999
-                line2+=",%s,%s,%s,%s" % (lat1, long1, lat2, long2)
+                line2+=",%s,%s,%s,%s" % (long1, lat1, long2, lat2)
                 line2+=",%s,%s,%s,%s" % (d.month, d.isocalendar()[1], d.day, d.hour)
                 if traindata:
                     try:
-                        long_final = polyline[-1][1]
+                        long_final = polyline[-1][0]
                     except:
                         long_final = -999
                     try:
-                        lat_final = polyline[-1][0]
+                        lat_final = polyline[-1][1]
                     except:
                         lat_final = -999
                     #append data
-                    line2+=",%s,%s" % (lat_final, long_final)
+                    line2+=",%s,%s" % (long_final, lat_final)
 
             elif m == 5:
                 d = datetime.fromtimestamp(int(feat))
