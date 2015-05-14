@@ -19,52 +19,9 @@ library(stringr)
 h2oServer <- h2o.init(ip="localhost", port = 54321)
 #h2oServer <- h2o.init(nthreads=-1, max_mem_size='64g')
 
-## Helper function for feature engineering
-h2o.addNewFeatures <- function(frame, timecol, intcols, factorcols, key) {
-  cat("\nFeature engineering for time column.")
-  hour <- frame[,timecol] %% 100
-  colnames(hour) <- "hour"
-  day <- ((frame[,timecol] - hour) %% 10000)/100
-  colnames(day) <- "day"
-  dow <- day %% 7
-  colnames(dow) <- "dayofweek"
-  frame <- cbind(frame[,-match(timecol,colnames(frame))], day, dow, hour, as.factor(day), as.factor(dow), as.factor(hour))
-  frame <- h2o.assign(frame, key)
-  h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
 
-  cat("\nFeature engineering for integer columns.")
-  newfactors <- c()
-  for (int in intcols) {
-    # turn integers into factors, keep top 100 levels
-    trim_integer_levels <- h2o.interaction(as.factor(frame[,int]), factors = 1, pairwise = FALSE, max_factors = 100, min_occurrence = 1)
-    newfactors <- c(newfactors, colnames(trim_integer_levels))
-    frame <- cbind(frame, trim_integer_levels)
-    frame <- h2o.assign(frame, key)
-    h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
-  }
 
-  cat("\nFeature engineering for factor columns.")
-  # create pair-wise interaction between factors, keep top 100 levels
-  factor_interactions <- h2o.interaction(frame, factors = c(newfactors,factorcols), pairwise = TRUE, max_factors = 100, min_occurrence = 2)
-  frame <- cbind(frame, factor_interactions)
-
-  # Store frame under designated key
-  frame <- h2o.assign(frame, key)
-
-  h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
-  frame
-}
-
-h2o.logLoss <- function(preds, resp) {
-  tpc <- preds
-  tpc <- h2o.exec(h2oServer,expr=ifelse(tpc > 1e-15, tpc, 1e-15))
-  tpc <- h2o.exec(h2oServer,expr=ifelse(tpc < 1-1e-15, tpc, 1-1e-15))
-  LL <- h2o.exec(h2oServer,expr=mean(-resp*log(tpc)-(1-resp)*log(1-tpc)))
-  h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
-  LL
-}
-
-h2o.HaversineDistance=function(lat1,lon1,lat2,lon2)
+HaversineDistance=function(lat1,lon1,lat2,lon2)
 {
   #returns the distance in km
   REarth<-6371
@@ -113,20 +70,26 @@ valid <- splits[[2]]
 h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
 
 # target are 17 and 18 column
-
+useGBM = T
 cat("\nTraining H2O model on training/validation ")
-## Note: This could be grid search models, after which you would obtain the best model with model <- cvmodel@model[[1]]
-cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=18,classification=F,
+if(useGBM){
+    #GBM
+    cvmodelLatitude <- h2o.gbm(data=train, validation=valid, x=c(2:16), y=18,distribution="gaussian"
+                       , n.tree=50, interaction.depth=10)
+
+    cvmodelLangitude <- h2o.gbm(data=train, validation=valid, x=c(2:16), y=17,distribution="gaussian"
+                       , n.tree=50, interaction.depth=10)
+} else {
+    cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=18,classification=F,
                            type="BigData", ntree=200, depth=20, seed=myseed)
-cvmodelLangitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=17,classification=F,
-                                    type="BigData", ntree=200, depth=20, seed=myseed)
+    cvmodelLangitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=17,classification=F,
+                                        type="BigData", ntree=200, depth=20, seed=myseed)
+}
 
-#GBM
-cvmodelLatitude <- h2o.gbm(data=train, validation=valid, x=c(2:16), y=18,distribution="gaussian"
-                   , n.tree=50, interaction.depth=10)
 
-cvmodelLangitude <- h2o.gbm(data=train, validation=valid, x=c(2:16), y=17,distribution="gaussian"
-                   , n.tree=50, interaction.depth=10)
+
+
+
 
 
 #cvmodel <- h2o.deeplearning(data=train, validation=valid, x=c(3:ncol(train)), y=2,
@@ -160,27 +123,29 @@ cat("\nHaversineDistance on validation data:",  h2o.meanHaversineDistance(data.m
 fullModel = T
 
 if(fullModel){
-  cvmodelLatitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=18,classification=F,
+    if(useGBM){
+        #GBM
+      cvmodelLatitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=18,distribution="gaussian"
+                                 , n.tree=100, interaction.depth=10)
+
+      cvmodelLangitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=17,distribution="gaussian"
+                                  , n.tree=100, interaction.depth=10)
+    }else {
+        cvmodelLatitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=18,classification=F,
                                       type="BigData", ntree=200, depth=20, seed=myseed)
-  cvmodelLangitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=17,classification=F,
-                                       type="BigData", ntree=200, depth=20, seed=myseed)
-  
-  #GBM
-  cvmodelLatitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=18,distribution="gaussian"
-                             , n.tree=100, interaction.depth=10)
-  
-  cvmodelLangitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=17,distribution="gaussian"
-                              , n.tree=100, interaction.depth=10)
-  
-  pred_lat <- h2o.predict(cvmodelLatitudeFull, test_hex)[,1]
-  pred_long <- h2o.predict(cvmodelLangitudeFull, test_hex)[,1]
-  submission <- read.csv(path_submission, colClasses = c("character"))
-  submission[2] <- as.data.frame(pred_lat)
-  submission[3] <- as.data.frame(pred_long)
-  colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
-  cat("\nWriting predictions on test data.")
-  write.csv(as.data.frame(submission), file = paste(path,"./submission1.3.csv", sep = ''), quote = F, row.names = F)
-  sink()
+        cvmodelLangitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=17,classification=F,
+                                               type="BigData", ntree=200, depth=20, seed=myseed)
+    }
+
+    pred_lat <- h2o.predict(cvmodelLatitudeFull, test_hex)[,1]
+    pred_long <- h2o.predict(cvmodelLangitudeFull, test_hex)[,1]
+    submission <- read.csv(path_submission, colClasses = c("character"))
+    submission[2] <- as.data.frame(pred_lat)
+    submission[3] <- as.data.frame(pred_long)
+    colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
+    cat("\nWriting predictions on test data.")
+    write.csv(as.data.frame(submission), file = paste(path,"./submission1.3.csv", sep = ''), quote = F, row.names = F)
+    sink()
   
 }
   
