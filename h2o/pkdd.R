@@ -91,7 +91,7 @@ h2o.RMSE<-function(pre,real)
 
 ### START
 myseed=5816985749037550201
-path <- "/Users/macpro/PycharmProjects/pkdd-15-predict-taxi-service-trajectory-i/"
+path <- "/Users/Abdelhaq/dev/DataScience/Kaggle/pkdd-15-predict-taxi-service-trajectory-i/"
 
 path_submission <- paste0(path,"./data/sampleSubmission.csv")
 path_train <- paste0(path,"./data/train2.csv")
@@ -101,20 +101,8 @@ cat("\nReading data.")
 train_hex <- h2o.importFile(h2oServer, path = path_train)
 test_hex <- h2o.importFile(h2oServer, path = path_test)
 
-## Feature engineering
 
-## all columns
-#intcols <- c("C1","banner_pos","site_category","device_type","device_conn_type","C14","C15","C16","C17","C18","C19","C20","C21")
-#factorcols <- c("site_id","site_domain","site_category","app_id","app_domain","app_category","device_id","device_ip","device_model")
 
-allColumn <- c("TRIP_ID","CALL_TYPE","ORIGIN_CALL","ORIGIN_STAND","TAXI_ID","TIMESTAMP","DAY_TYPE","MISSING_DATA","LAT1","LONG2","LAT2","LONG1","LATF","LONGF")
-intcols <- c("C1","banner_pos","site_category","device_type","device_conn_type","C14","C15","C16","C17","C18","C19","C20","C21")
-factorcols <- c()
-
-cat("\nAdding features")
-cat("\nTODO")
-#train_hex <- h2o.addNewFeatures(train_hex, "hour", intcols, factorcols, "train.hex")
-#test_hex <- h2o.addNewFeatures(test_hex, "hour", intcols, factorcols, "test.hex")
 
 ## Split into train/validation based on training days (first 9 days: train, last day: test)
 cat("\nSplitting into train/validation")
@@ -124,34 +112,36 @@ train <- splits[[1]]
 valid <- splits[[2]]
 h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
 
-# target are 13 and 14 column
+# target are 17 and 18 column
 
 cat("\nTraining H2O model on training/validation ")
 ## Note: This could be grid search models, after which you would obtain the best model with model <- cvmodel@model[[1]]
-cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:12), y=13,classification=F,
+cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=18,classification=F,
                            type="BigData", ntree=200, depth=20, seed=myseed)
-cvmodelLangitude <- h2o.randomForest(data=train, validation=valid, x=c(2:12), y=14,classification=F,
+cvmodelLangitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=17,classification=F,
                                     type="BigData", ntree=200, depth=20, seed=myseed)
-#cvmodelLatitude <- h2o.gbm(data=train, validation=valid, x=c(2:12), y=13,distribution="gaussian"
-#                   , n.tree=50, interaction.depth=10)
 
-#cvmodelLangitude <- h2o.gbm(data=train, validation=valid, x=c(2:12), y=14,distribution="gaussian"
-#                   , n.tree=50, interaction.depth=10)
+#GBM
+cvmodelLatitude <- h2o.gbm(data=train, validation=valid, x=c(2:16), y=18,distribution="gaussian"
+                   , n.tree=50, interaction.depth=10)
+
+cvmodelLangitude <- h2o.gbm(data=train, validation=valid, x=c(2:16), y=17,distribution="gaussian"
+                   , n.tree=50, interaction.depth=10)
 
 
 #cvmodel <- h2o.deeplearning(data=train, validation=valid, x=c(3:ncol(train)), y=2,
 #                            hidden=c(50,50), max_categorical_features=100000, train_samples_per_iteration=10000, score_validation_samples=10000)
 
 # Latitude Part
-train_resp_lat <- train[,13] #actual label
+train_resp_lat <- train[,18] #actual label
 train_preds_lat <- h2o.predict(cvmodelLatitude, train)[,1] #[,3] is probability for class 1
-valid_resp_lat <- valid[,13]
+valid_resp_lat <- valid[,18]
 valid_preds_lat <- h2o.predict(cvmodelLatitude, valid)[,1]
 
 # Longitude Part
-train_resp_long <- train[,14] #actual label
+train_resp_long <- train[,17] #actual label
 train_preds_long <- h2o.predict(cvmodelLangitude, train)[,1] #[,3] is probability for class 1
-valid_resp_long <- valid[,14]
+valid_resp_long <- valid[,17]
 valid_preds_long <- h2o.predict(cvmodelLangitude, valid)[,1]
 
 
@@ -170,19 +160,26 @@ cat("\nHaversineDistance on validation data:",  h2o.meanHaversineDistance(data.m
 fullModel = T
 
 if(fullModel){
-  cvmodelLatitudeFull <- h2o.randomForest(data=train_hex, x=c(2:12), y=13,classification=F,
+  cvmodelLatitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=18,classification=F,
                                       type="BigData", ntree=200, depth=20, seed=myseed)
-  cvmodelLangitudeFull <- h2o.randomForest(data=train_hex, x=c(2:12), y=14,classification=F,
+  cvmodelLangitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=17,classification=F,
                                        type="BigData", ntree=200, depth=20, seed=myseed)
+  
+  #GBM
+  cvmodelLatitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=18,distribution="gaussian"
+                             , n.tree=100, interaction.depth=10)
+  
+  cvmodelLangitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=17,distribution="gaussian"
+                              , n.tree=100, interaction.depth=10)
   
   pred_lat <- h2o.predict(cvmodelLatitudeFull, test_hex)[,1]
   pred_long <- h2o.predict(cvmodelLangitudeFull, test_hex)[,1]
   submission <- read.csv(path_submission, colClasses = c("character"))
-  submission[3] <- as.data.frame(pred_lat)
-  submission[2] <- as.data.frame(pred_long)
+  submission[2] <- as.data.frame(pred_lat)
+  submission[3] <- as.data.frame(pred_long)
   colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
   cat("\nWriting predictions on test data.")
-  write.csv(as.data.frame(submission), file = paste(path,"./submission1.csv", sep = ''), quote = F, row.names = F)
+  write.csv(as.data.frame(submission), file = paste(path,"./submission1.3.csv", sep = ''), quote = F, row.names = F)
   sink()
   
 }
