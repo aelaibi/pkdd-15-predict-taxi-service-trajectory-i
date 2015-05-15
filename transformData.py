@@ -1,15 +1,13 @@
 
 import json
-
+import pandas as pd
 from datetime import datetime
 
 train = 'data/train.csv.processing.imported'
 
 test = 'data/test.csv'
 
-# drop some training data that doesnt have end-points
-#train = train[train['LATF'] != -999]
-#train = train[train['LONGF'] != -999]
+metaStations = pd.read_csv('data/metaData_taxistandsID_name_GPSlocation.csv')
 
 #"TRIP_ID","CALL_TYPE","ORIGIN_CALL","ORIGIN_STAND","TAXI_ID","TIMESTAMP","DAY_TYPE","MISSING_DATA","POLYLINE"
 header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,DAY_TYPE,MISSING_DATA,LONG1,LAT1,LONG2,LAT2"
@@ -57,6 +55,11 @@ def data(path, traindata=False):
                     #append data
                     line2+=",%s,%s" % (long_final, lat_final)
 
+            elif m == 7:
+                missionData = feat
+                if missionData == 'True':
+                    line2 = ''
+                    break
             elif m == 5:
                 d = datetime.fromtimestamp(int(feat))
                 line2+=feat if m == 0 else ","+feat
@@ -68,24 +71,27 @@ def data(path, traindata=False):
 
 print 'starting ...'
 tt = 1
+transform = False
+if(transform):
+    print 'transforming train data'
+    with open("data/train-no-missing-data-2.csv", 'w') as outfile:
+        outfile.write(header+extraCols+yHead+'\n')
+        for line in data(train, traindata = True):
+            if line != '':
+                outfile.write('%s\n' % line)
+            if tt % 100000 == 0:
+                    print('%s\tencountered: %d' % (datetime.now(), tt))
+            tt += 1
+        outfile.close()
 
-print 'transforming train data'
-with open("data/train2.csv", 'w') as outfile:
-    outfile.write(header+extraCols+yHead+'\n')
-    for line in data(train, traindata = True):
-        outfile.write('%s\n' % line)
-        if tt % 100000 == 0:
-                print('%s\tencountered: %d' % (datetime.now(), tt))
-        tt += 1
-    outfile.close()
+    tt = 1
+    print 'transforming test data'
+    with open("data/test2.csv", 'w') as outfile:
+        outfile.write(header+extraCols+'\n')
+        for lineTest in data(test):
+            outfile.write('%s\n' % lineTest)
+            if tt % 100000 == 0:
+                    print('%s\tencountered: %d' % (datetime.now(), tt))
+            tt += 1
+        outfile.close()
 
-tt = 1
-print 'transforming test data'
-with open("data/test2.csv", 'w') as outfile:
-    outfile.write(header+extraCols+'\n')
-    for lineTest in data(test):
-        outfile.write('%s\n' % lineTest)
-        if tt % 100000 == 0:
-                print('%s\tencountered: %d' % (datetime.now(), tt))
-        tt += 1
-    outfile.close()
