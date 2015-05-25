@@ -18,7 +18,7 @@ process.data<-function(filename)
 	print(my_poly)
 	print("")
 	i<-1
-
+  print("loop on polyline")
 	for (mp in c(1:length(dt$POLYLINE)))
 	{
 		print(mp)
@@ -55,11 +55,11 @@ miliseconds_to_date<-function(dt)
   return(final)
 }
 
-create_map<-function(ntraj,lat,lon,zoom=13)
+create_map<-function(ntraj,lat,lon,zoom=14)
 {
 
   #random colors
-  colfunc<-colorRampPalette(c("green","red"))
+  colfunc<-colorRampPalette(c("red","red"))
 
   center = c(mean(lat), mean(lon))
   print(sprintf("Zoom: %d",zoom))
@@ -122,4 +122,22 @@ getlat<-function(ele)
 getlon<-function(ele)
 {
 	return(as.numeric(unlist(strsplit(ele,"[,]"))[1]))
+}
+
+filename <- "/Users/Abdelhaq/dev/DataScience/Kaggle/pkdd-15-predict-taxi-service-trajectory-i/data/train-no-missing-data-3.csv"
+
+dt<-read.csv2(filename,sep=",")
+
+
+dt$LATF<- as.character(dt$LATF)
+dt$LONGF<- as.character(dt$LONGF)
+
+dt$LATF<- as.numeric(dt$LATF)
+dt$LONGF<- as.numeric(dt$LONGF)
+
+create_map(35, dt$LATF[1:1000], dt$LONGF[1:1000], 13)
+
+for (s in c(1:15)){
+  create_map(35, dt$LATF[s], dt$LONGF[s], 13)
+  x<-scan()
 }

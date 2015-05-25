@@ -52,7 +52,7 @@ path <- "/Users/Abdelhaq/dev/DataScience/Kaggle/pkdd-15-predict-taxi-service-tra
 
 path_train_brut <- paste0(path,"./data/")
 path_submission <- paste0(path,"./data/sampleSubmission.csv")
-path_train <- paste0(path,"./data/train2.csv")
+path_train <- paste0(path,"./data/train-no-missing-data-3.csv")
 path_test <- paste0(path,"./data/test2.csv")
 
 cat("\nReading data.")
@@ -64,8 +64,8 @@ test_hex <- h2o.importFile(h2oServer, path = path_test)
 
 ## Split into train/validation based on training days (first 9 days: train, last day: test)
 cat("\nSplitting into train/validation")
-reproducible_mode = T # Set to TRUE if you want reproducible results, e.g. for final Kaggle submission if you think you'll win :)  Note: will be slower for DL
-splits <- h2o.splitFrame(train_hex, ratios = 0.95, shuffle=!reproducible_mode)
+reproducible_mode = F # Set to TRUE if you want reproducible results, e.g. for final Kaggle submission if you think you'll win :)  Note: will be slower for DL
+splits <- h2o.splitFrame(train_hex, ratios = 0.80, shuffle=!reproducible_mode)
 train <- splits[[1]]
 valid <- splits[[2]]
 h2o.rm(h2oServer, grep(pattern = "Last.value", x = h2o.ls(h2oServer)$Key, value = TRUE))
@@ -75,10 +75,10 @@ useGBM = T
 cat("\nTraining H2O model on training/validation ")
 if(useGBM){
     #GBM
-    cvmodelLatitude <- h2o.gbm(data=train, x=c(2:16), y=18,distribution="gaussian"
+    cvmodelLatitude <- h2o.gbm(data=train, x=c(2:15), y=17,distribution="gaussian"
                        , n.tree=400, interaction.depth=10)
 
-    cvmodelLangitude <- h2o.gbm(data=train, x=c(2:16), y=17,distribution="gaussian"
+    cvmodelLangitude <- h2o.gbm(data=train, x=c(2:15), y=16,distribution="gaussian"
                        , n.tree=400, interaction.depth=10)
 } else {
     cvmodelLatitude <- h2o.randomForest(data=train, validation=valid, x=c(2:16), y=18,classification=F,
@@ -87,12 +87,6 @@ if(useGBM){
                                         type="BigData", ntree=200, depth=20, seed=myseed)
 }
 
-
-
-
-
-
-
 #cvmodel <- h2o.deeplearning(data=train, validation=valid, x=c(3:ncol(train)), y=2,
 #                            hidden=c(50,50), max_categorical_features=100000, train_samples_per_iteration=10000, score_validation_samples=10000)
 
@@ -100,9 +94,9 @@ if(useGBM){
 #cvmodelLatitude <- h2o.getModel(h2oServer,'GBM_82c71f5a00f134559f0c0bbfa61e4f6e')
 
 # train Part
-train_resp_lat <- train[,18] #actual label
+train_resp_lat <- train[,17] #actual label
 train_preds_lat <- h2o.predict(cvmodelLatitude, train)[,1] #[,3] is probability for class 1
-train_resp_long <- train[,17] #actual label
+train_resp_long <- train[,16] #actual label
 train_preds_long <- h2o.predict(cvmodelLangitude, train)[,1] #[,3] is probability for class 1
 
 cat("\nHaversineDistance on Training data:",  h2o.meanHaversineDistance(data.matrix(as.data.frame(train_preds_lat)),
@@ -110,9 +104,9 @@ cat("\nHaversineDistance on Training data:",  h2o.meanHaversineDistance(data.mat
                                                                         data.matrix(as.data.frame(train_resp_lat)),
                                                                         data.matrix(as.data.frame(train_resp_long))))
 # valid part
-valid_resp_lat <- valid[,18]
+valid_resp_lat <- valid[,17]
 valid_preds_lat <- h2o.predict(cvmodelLatitude, valid)[,1]
-valid_resp_long <- valid[,17]
+valid_resp_long <- valid[,16]
 valid_preds_long <- h2o.predict(cvmodelLangitude, valid)[,1]
 
 cat("\nHaversineDistance on validation data:",  h2o.meanHaversineDistance(data.matrix(as.data.frame(valid_preds_lat)),
@@ -127,10 +121,10 @@ fullModel = F
 if(fullModel){
     if(useGBM){
         #GBM
-      cvmodelLatitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=18,distribution="gaussian"
+      cvmodelLatitudeFull <- h2o.gbm(data=train_hex,  x=c(2:15), y=17,distribution="gaussian"
                                  , n.tree=400, interaction.depth=10)
 
-      cvmodelLangitudeFull <- h2o.gbm(data=train_hex, validation=valid, x=c(2:16), y=17,distribution="gaussian"
+      cvmodelLangitudeFull <- h2o.gbm(data=train_hex,  x=c(2:15), y=16,distribution="gaussian"
                                   , n.tree=400, interaction.depth=10)
     }else {
         cvmodelLatitudeFull <- h2o.randomForest(data=train_hex, x=c(2:16), y=18,classification=F,
@@ -146,7 +140,7 @@ if(fullModel){
     submission[3] <- as.data.frame(pred_long)
     colnames(submission) <- c("TRIP_ID","LATITUDE","LONGITUDE")
     cat("\nWriting predictions on test data.")
-    write.csv(as.data.frame(submission), file = paste(path,"./submission1.5.csv", sep = ''), quote = F, row.names = F)
+    write.csv(as.data.frame(submission), file = paste(path,"./submission1.-no-missingdata-7.csv", sep = ''), quote = F, row.names = F)
     sink()
   
 }

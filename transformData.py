@@ -1,5 +1,6 @@
 
 import json
+import math
 import pandas as pd
 from datetime import datetime
 
@@ -10,9 +11,23 @@ test = 'data/test.csv'
 metaStations = pd.read_csv('data/metaData_taxistandsID_name_GPSlocation.csv')
 
 #"TRIP_ID","CALL_TYPE","ORIGIN_CALL","ORIGIN_STAND","TAXI_ID","TIMESTAMP","DAY_TYPE","MISSING_DATA","POLYLINE"
-header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,DAY_TYPE,MISSING_DATA,LONG1,LAT1,LONG2,LAT2"
+header = "TRIP_ID,CALL_TYPE,ORIGIN_CALL,ORIGIN_STAND,TAXI_ID,TIMESTAMP,LONG1,LAT1,LONG2,LAT2"
 yHead = ",LONGF,LATF"
 extraCols =",MONTH,WEEK,DAY,HOUR"
+
+def haversinedistance(lat1,lon1,lat2,lon2):
+
+  #returns the distance in km
+  REarth = 6371
+  lat = abs(lat1-lat2) * math.pi/180
+  lon = abs(lon1-lon2)*math.pi/180
+  lat1 = lat1*math.pi/180
+  lat2 = lat2*math.pi/180
+  a = math.sin(lat/2)*math.sin(lat/2)+math.cos(lat1)*math.cos(lat2)*math.sin(lon/2)*math.sin(lon/2)
+  d = 2*math.atan2(math.sqrt(a),math.sqrt(1-a))
+  d = REarth*d
+  return d
+
 
 def data(path, traindata=False):
     for t, line in enumerate(open(path)):
@@ -23,13 +38,17 @@ def data(path, traindata=False):
         d = 1
         for m, feat in enumerate(line.rstrip().replace('NA', '""').replace('","',';').replace('"','').split(';')):
             if m == 8: # POLYLINE
+
                 polyline = json.loads(feat)
+                if (traindata & (len(polyline)<3)):
+                    line2 = ''
+                    break
                 try:
                     lat1 = polyline[0][1]
                 except:
                     lat1 = -999
                 try:
-                    lat2 = polyline[-2][1]
+                    lat2 = polyline[1][1]
                 except:
                     lat2 = -999
 
@@ -38,7 +57,7 @@ def data(path, traindata=False):
                 except:
                     long1 = -999
                 try:
-                    long2 = polyline[-2][0]
+                    long2 = polyline[1][0]
                 except:
                     long2 = -999
                 line2+=",%s,%s,%s,%s" % (long1, lat1, long2, lat2)
@@ -60,6 +79,8 @@ def data(path, traindata=False):
                 if missionData == 'True':
                     line2 = ''
                     break
+            elif m == 6: # day_type is the same in all data/test
+                continue
             elif m == 5:
                 d = datetime.fromtimestamp(int(feat))
                 line2+=feat if m == 0 else ","+feat
@@ -71,10 +92,10 @@ def data(path, traindata=False):
 
 print 'starting ...'
 tt = 1
-transform = False
+transform = True
 if(transform):
     print 'transforming train data'
-    with open("data/train-no-missing-data-2.csv", 'w') as outfile:
+    with open("data/train-no-missing-data-4.csv", 'w') as outfile:
         outfile.write(header+extraCols+yHead+'\n')
         for line in data(train, traindata = True):
             if line != '':
