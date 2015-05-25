@@ -20,7 +20,6 @@ h2oServer <- h2o.init(ip="localhost", port = 54321)
 #h2oServer <- h2o.init(nthreads=-1, max_mem_size='64g')
 
 
-
 HaversineDistance=function(lat1,lon1,lat2,lon2)
 {
   #returns the distance in km
@@ -58,7 +57,6 @@ path_test <- paste0(path,"./data/test2.csv")
 cat("\nReading data.")
 train_hex <- h2o.importFile(h2oServer, path = path_train)
 test_hex <- h2o.importFile(h2oServer, path = path_test)
-
 
 
 
