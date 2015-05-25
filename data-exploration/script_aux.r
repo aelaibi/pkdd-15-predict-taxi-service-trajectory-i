@@ -59,7 +59,8 @@ create_map<-function(ntraj,lat,lon,zoom=14)
 {
 
   #random colors
-  colfunc<-colorRampPalette(c("red","red"))
+  #colfunc<-colorRampPalette(c('red', 'blue', 'green'))
+  cols <- rev(colorRampPalette(brewer.pal(8, 'RdYlGn'))(100))
 
   center = c(mean(lat), mean(lon))
   print(sprintf("Zoom: %d",zoom))
@@ -69,7 +70,8 @@ create_map<-function(ntraj,lat,lon,zoom=14)
 
   print(lat)
   print(lon)
-  tmp <- PlotOnStaticMap(MyMap, lat = lat,lon = lon, cex=point_size,pch=20, col=colfunc(length(lat)), add=FALSE)
+  #tmp <- PlotOnStaticMap(MyMap, lat = lat,lon = lon, cex=point_size,pch=20, col=colfunc(length(lat)), add=FALSE, )
+  tmp <- PlotOnStaticMap(MyMap, lat = lat,lon = lon, cex=point_size,pch=20, col=cols, add=FALSE, )
   str(tmp)
 }
 
@@ -141,3 +143,8 @@ for (s in c(1:15)){
   create_map(35, dt$LATF[s], dt$LONGF[s], 13)
   x<-scan()
 }
+
+load.lib("RColorBrewer")
+library(RColorBrewer)
+load.lib("MASS")
+library(MASS)
