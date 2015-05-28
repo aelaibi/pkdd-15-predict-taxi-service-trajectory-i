@@ -145,5 +145,11 @@ if(fullModel){
     sink()
   
 }
-h2o.getModel(h2oServer,'GBM_a117a48e0376432ac76b869d9dc64aea')
-h2o.getModel(h2oServer,'GBM_86d29dd28adf8aeede8da056d9b74bf9')
+
+path <- "/Users/macpro/PycharmProjects/pkdd-15-predict-taxi-service-trajectory-i/"
+path_points_train <- paste0(path,"./data/train_points.csv")
+path_points_train_hex <- h2o.importFile(h2oServer, path = path_points_train)
+kmeanModel <- h2o.kmeans(centers=100,data=path_points_train_hex, seed=myseed)
+kmeanModel@model$centers
+newPoints <- c(-8.653738,41.17811)
+pred_kmean <- h2o.predict(kmeanModel,newPoints)
